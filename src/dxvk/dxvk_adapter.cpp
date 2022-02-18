@@ -365,10 +365,7 @@ namespace dxvk {
     // Only enable Cuda interop extensions in 64-bit builds in
     // order to avoid potential driver or address space issues.
     // VK_KHR_buffer_device_address is expensive on some drivers.
-    bool enableCudaInterop = !env::is32BitHostPlatform() &&
-      m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
-      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
-      m_deviceFeatures.vk12.bufferDeviceAddress;
+    bool enableCudaInterop = false;
 
     if (enableCudaInterop) {
       devExtensions.nvxBinaryImport.setMode(DxvkExtMode::Optional);
