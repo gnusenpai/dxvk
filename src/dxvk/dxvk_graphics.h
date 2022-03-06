@@ -187,11 +187,13 @@ namespace dxvk {
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
      * \param [in] renderPass The render pass
+     * \param [in] async Compile asynchronously
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass*                   renderPass);
+      const DxvkRenderPass*                   renderPass,
+            bool                              async);
     
     /**
      * \brief Compiles a pipeline
@@ -200,11 +202,16 @@ namespace dxvk {
      * and stores the result for future use.
      * \param [in] state Pipeline state vector
      * \param [in] renderPass The render pass
+     * \returns \c true if compile succeeded
      */
-    void compilePipeline(
+    bool compilePipeline(
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass*                   renderPass);
     
+    void writePipelineStateToCache(
+      const DxvkGraphicsPipelineStateInfo& state,
+      const DxvkRenderPassFormat&          format) const;
+
   private:
     
     Rc<vk::DeviceFn>            m_vkd;
@@ -224,6 +231,8 @@ namespace dxvk {
     // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                               m_mutex;
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                               m_mutex2;
     sync::List<DxvkGraphicsPipelineInstance>  m_pipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
@@ -250,10 +259,6 @@ namespace dxvk {
 
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;
-    
-    void writePipelineStateToCache(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPassFormat&          format) const;
     
     void logPipelineState(
             LogLevel                       level,
