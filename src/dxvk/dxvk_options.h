@@ -2,6 +2,8 @@
 
 #include "../util/config/config.h"
 
+#include "dxvk_include.h"
+
 namespace dxvk {
 
   struct DxvkOptions {
@@ -23,6 +25,9 @@ namespace dxvk {
 
     /// Enables pipeline lifetime tracking
     Tristate trackPipelineLifetime;
+
+    // Enable async pipelines
+    bool enableAsync;
 
     /// Shader-related options
     Tristate useRawSsbo;

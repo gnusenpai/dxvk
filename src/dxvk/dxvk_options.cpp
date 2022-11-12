@@ -10,6 +10,14 @@ namespace dxvk {
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
+
+    if (env::getEnvVar("DXVK_ASYNC") == "1")
+      enableAsync = true;
+    else
+      enableAsync = config.getOption<bool>("dxvk.enableAsync", false);
+
+    if (enableAsync)
+      enableGraphicsPipelineLibrary = Tristate::False;
   }
 
 }

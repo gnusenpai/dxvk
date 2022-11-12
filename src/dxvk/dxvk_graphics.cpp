@@ -899,7 +899,8 @@ namespace dxvk {
 
 
   std::pair<VkPipeline, DxvkGraphicsPipelineType> DxvkGraphicsPipeline::getPipelineHandle(
-    const DxvkGraphicsPipelineStateInfo& state) {
+    const DxvkGraphicsPipelineStateInfo& state,
+          bool                           async) {
     DxvkGraphicsPipelineInstance* instance = this->findInstance(state);
 
     if (unlikely(!instance)) {
@@ -907,28 +908,36 @@ namespace dxvk {
       if (!this->validatePipelineState(state, true))
         return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
 
+      bool useAsync = m_device->config().enableAsync && async;
+
       // Prevent other threads from adding new instances and check again
-      std::unique_lock<dxvk::mutex> lock(m_mutex);
+      std::unique_lock<dxvk::mutex> lock(useAsync ? m_asyncMutex : m_mutex);
       instance = this->findInstance(state);
 
       if (!instance) {
-        // Keep pipeline object locked, at worst we're going to stall
-        // a state cache worker and the current thread needs priority.
-        bool canCreateBasePipeline = this->canCreateBasePipeline(state);
-        instance = this->createInstance(state, canCreateBasePipeline);
-
-        // Unlock here since we may dispatch the pipeline to a worker,
-        // which will then acquire it to increment the use counter.
-        lock.unlock();
-
-        // If necessary, compile an optimized pipeline variant
-        if (!instance->fastHandle.load())
+        if (useAsync) {
+          lock.unlock();
           m_workers->compileGraphicsPipeline(this, state);
+          return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
+        } else {
+          // Keep pipeline object locked, at worst we're going to stall
+          // a state cache worker and the current thread needs priority.
+          bool canCreateBasePipeline = this->canCreateBasePipeline(state);
+          instance = this->createInstance(state, canCreateBasePipeline);
 
-        // Only store pipelines in the state cache that cannot benefit
-        // from pipeline libraries, or if that feature is disabled.
-        if (!canCreateBasePipeline)
-          this->writePipelineStateToCache(state);
+          // Unlock here since we may dispatch the pipeline to a worker,
+          // which will then acquire it to increment the use counter.
+          lock.unlock();
+
+          // If necessary, compile an optimized pipeline variant
+          if (!instance->fastHandle.load())
+            m_workers->compileGraphicsPipeline(this, state);
+
+          // Only store pipelines in the state cache that cannot benefit
+          // from pipeline libraries, or if that feature is disabled.
+          if (!canCreateBasePipeline)
+            this->writePipelineStateToCache(state);
+        }
       }
     }
 
